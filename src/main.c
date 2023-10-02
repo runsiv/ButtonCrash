@@ -11,6 +11,9 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/printk.h>
 #include <inttypes.h>
+// add coredump
+#include <zephyr/debug/coredump.h>
+
 
 #define SLEEP_TIME_MS	1
 
@@ -36,6 +39,36 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
 	printk("Button pressed at %" PRIu32 "\n", k_cycle_get_32());
+	printk("Coredump: %s\n", CONFIG_BOARD);
+	func_1(0);
+}
+
+
+
+void func_3(uint32_t *addr)
+{
+
+#if !defined(CONFIG_CPU_CORTEX_M)
+	/* For null pointer reference */
+	*addr = 0;
+#else
+	ARG_UNUSED(addr);
+	/* Dereferencing null-pointer in TrustZone-enabled
+	 * builds may crash the system, so use, instead an
+	 * undefined instruction to trigger a CPU fault.
+	 */
+	__asm__ volatile("udf #0" : : : );
+#endif
+}
+
+void func_2(uint32_t *addr)
+{
+	func_3(addr);
+}
+// 
+void func_1(uint32_t *addr)
+{
+	func_2(addr);
 }
 
 int main(void)
@@ -91,6 +124,8 @@ int main(void)
 
 			if (val >= 0) {
 				gpio_pin_set_dt(&led, val);
+				
+				
 			}
 			k_msleep(SLEEP_TIME_MS);
 		}
